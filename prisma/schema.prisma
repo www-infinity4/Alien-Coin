@@ -1,0 +1,183 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Song {
+  id          String  @id @default(uuid())
+  title       String
+  artist      String
+  year        Int
+  archiveUrl  String?
+  youtubeUrl  String?
+  genreTags   String
+  durationSec Int?
+  sources     String
+}
+
+model Movie {
+  id         String  @id @default(uuid())
+  title      String
+  year       Int
+  archiveUrl String?
+  youtubeUrl String?
+  runtimeMin Int?
+  rating     String?
+  sources    String
+}
+
+model Tree {
+  id              String @id @default(uuid())
+  commonName      String
+  scientificName  String
+  hardinessZones  String
+  nativeRegions   String
+  careNotes       String
+  sources         String
+}
+
+model PlantingLocation {
+  id           String  @id @default(uuid())
+  name         String
+  region       String
+  climateTags  String
+  permitNotes  String
+  sources      String
+  ecoregion    String  @default("")
+  referenceLat Float?
+  referenceLng Float?
+}
+
+model TreatIdea {
+  id              String @id @default(uuid())
+  name            String
+  type            String
+  originCountry   String
+  seasonality     String
+  whereToBuyNotes String
+  sources         String
+}
+
+model GreekGod {
+  id               String @id @default(uuid())
+  name             String
+  domain           String
+  storyTitle       String
+  storyText        String
+  primarySources   String
+  secondarySources String
+}
+
+model Coin {
+  id               String  @id @default(uuid())
+  name             String
+  issuerCountry    String
+  denomination     String
+  year             Int
+  mint             String?
+  mintage          String?
+  composition      String
+  diameterMm       Float?
+  coinTypeTags     String
+  historyText      String
+  collectorNotes   String
+  whereToFindLinks String
+  sources          String
+}
+
+model Quote {
+  id        String  @id @default(uuid())
+  speaker   String
+  date      String
+  quote     String
+  context   String
+  sourceUrl String?
+}
+
+model Gemstone {
+  id                     String @id @default(uuid())
+  name                   String
+  type                   String
+  mohs                   Float
+  colors                 String
+  formation              String
+  whereFoundRegions      String
+  ethicalCollectingNotes String
+  whereToBuyNotes        String
+  sources                String
+}
+
+model Meal {
+  id            String @id @default(uuid())
+  mealName      String
+  cuisineRegion String
+  components    String
+  recipeText    String
+  historyNotes  String
+  variants      String
+  sources       String
+}
+
+model Token {
+  id          String          @id @default(uuid())
+  createdAt   DateTime        @default(now())
+  seed        String
+  version     String          @default("1.0")
+  title       String
+  summary     String
+  reportUrl   String?
+  reportHash  String?
+  rarityTier  String          @default("Utility")
+  proofHash   String?
+  ownerWallet String?
+  owner       User?           @relation("TokenOwner", fields: [ownerWallet], references: [walletAddress])
+  items       TokenItem[]
+  citations   Citation[]
+  transfers   TokenTransfer[]
+}
+
+model TokenItem {
+  id           String @id @default(uuid())
+  tokenId      String
+  token        Token  @relation(fields: [tokenId], references: [id])
+  category     String
+  entityId     String
+  displayOrder Int
+  notes        String?
+}
+
+model Citation {
+  id          String   @id @default(uuid())
+  tokenId     String
+  token       Token    @relation(fields: [tokenId], references: [id])
+  section     String
+  sourceTitle String
+  sourceUrl   String?
+  retrievedAt DateTime @default(now())
+  snippet     String?
+}
+
+model User {
+  id            String          @id @default(uuid())
+  walletAddress String          @unique
+  createdAt     DateTime        @default(now())
+  tokensOwned   Token[]         @relation("TokenOwner")
+  transfersSent TokenTransfer[] @relation("TransferSender")
+  transfersRcvd TokenTransfer[] @relation("TransferRecipient")
+}
+
+model TokenTransfer {
+  id            String   @id @default(uuid())
+  tokenId       String
+  token         Token    @relation(fields: [tokenId], references: [id])
+  fromAddress   String
+  toAddress     String
+  sender        User     @relation("TransferSender", fields: [fromAddress], references: [walletAddress])
+  recipient     User     @relation("TransferRecipient", fields: [toAddress], references: [walletAddress])
+  transferredAt DateTime @default(now())
+  memo          String?
+}

@@ -1,13 +1,9 @@
 'use client';
 
-import { useEffect } from 'react';
-
 export default function PrintButton() {
   const handlePrint = () => {
     window.print();
   };
-
-  useEffect(() => {}, []);
 
   return (
     <button

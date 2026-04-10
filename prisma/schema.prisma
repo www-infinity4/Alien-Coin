@@ -41,12 +41,15 @@ model Tree {
 }
 
 model PlantingLocation {
-  id          String @id @default(uuid())
-  name        String
-  region      String
-  climateTags String
-  permitNotes String
-  sources     String
+  id           String  @id @default(uuid())
+  name         String
+  region       String
+  climateTags  String
+  permitNotes  String
+  sources      String
+  ecoregion    String  @default("")
+  referenceLat Float?
+  referenceLng Float?
 }
 
 model TreatIdea {
@@ -120,16 +123,21 @@ model Meal {
 }
 
 model Token {
-  id         String      @id @default(uuid())
-  createdAt  DateTime    @default(now())
-  seed       String
-  version    String      @default("1.0")
-  title      String
-  summary    String
-  reportUrl  String?
-  reportHash String?
-  items      TokenItem[]
-  citations  Citation[]
+  id          String          @id @default(uuid())
+  createdAt   DateTime        @default(now())
+  seed        String
+  version     String          @default("1.0")
+  title       String
+  summary     String
+  reportUrl   String?
+  reportHash  String?
+  rarityTier  String          @default("Utility")
+  proofHash   String?
+  ownerWallet String?
+  owner       User?           @relation("TokenOwner", fields: [ownerWallet], references: [walletAddress])
+  items       TokenItem[]
+  citations   Citation[]
+  transfers   TokenTransfer[]
 }
 
 model TokenItem {
@@ -151,4 +159,25 @@ model Citation {
   sourceUrl   String?
   retrievedAt DateTime @default(now())
   snippet     String?
+}
+
+model User {
+  id            String          @id @default(uuid())
+  walletAddress String          @unique
+  createdAt     DateTime        @default(now())
+  tokensOwned   Token[]         @relation("TokenOwner")
+  transfersSent TokenTransfer[] @relation("TransferSender")
+  transfersRcvd TokenTransfer[] @relation("TransferRecipient")
+}
+
+model TokenTransfer {
+  id            String   @id @default(uuid())
+  tokenId       String
+  token         Token    @relation(fields: [tokenId], references: [id])
+  fromAddress   String
+  toAddress     String
+  sender        User     @relation("TransferSender", fields: [fromAddress], references: [walletAddress])
+  recipient     User     @relation("TransferRecipient", fields: [toAddress], references: [walletAddress])
+  transferredAt DateTime @default(now())
+  memo          String?
 }

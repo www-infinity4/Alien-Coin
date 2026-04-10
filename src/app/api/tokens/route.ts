@@ -1,13 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { writeFile, mkdir } from 'fs/promises';
+import { join } from 'path';
 import { prisma } from '@/lib/prisma';
 import { generateSeed, seededPick } from '@/lib/tokenGenerator';
+import { computeRarityTier, computeProofHash, buildTokenJSON } from '@/lib/rarityEngine';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => ({}));
-    const { userId } = body as { userId?: string };
+    const { userId, walletAddress } = body as { userId?: string; walletAddress?: string };
 
-    const seed = generateSeed(userId);
+    const seed = generateSeed(userId ?? walletAddress);
 
     const [songs, movies, trees, plantingLocations, treatIdeas, greekGods, coins, quotes, gemstones, meals] =
       await Promise.all([
@@ -36,17 +39,40 @@ export async function POST(request: NextRequest) {
       meal: seededPick(meals, seed, 'meal'),
     };
 
-    const songPick = picks.song;
-    const coinPick = picks.coin;
+    const songPick = picks.song as { title: string };
+    const coinPick = picks.coin as { name: string };
 
-    const title = `Alien Coin Bundle — ${(songPick as { title: string }).title} × ${(coinPick as { name: string }).name}`;
+    const title = `Alien Coin Bundle — ${songPick.title} × ${coinPick.name}`;
     const summary = `A curated experience bundle generated from seed "${seed}", combining music, cinema, nature, food, mythology, numismatics, gemology, and culinary heritage.`;
+
+    const rarityTier = computeRarityTier({
+      coin: picks.coin as Parameters<typeof computeRarityTier>[0]['coin'],
+      song: picks.song as Parameters<typeof computeRarityTier>[0]['song'],
+      movie: picks.movie as Parameters<typeof computeRarityTier>[0]['movie'],
+      meal: picks.meal as Parameters<typeof computeRarityTier>[0]['meal'],
+      tree: picks.tree as Parameters<typeof computeRarityTier>[0]['tree'],
+    });
+
+    // Register wallet user if provided
+    if (walletAddress) {
+      await prisma.user.upsert({
+        where: { walletAddress },
+        update: {},
+        create: { walletAddress },
+      });
+    }
+
+    const createdAt = new Date().toISOString();
+    const proofHash = computeProofHash(seed, title, createdAt);
 
     const token = await prisma.token.create({
       data: {
         seed,
         title,
         summary,
+        rarityTier,
+        proofHash,
+        ownerWallet: walletAddress ?? null,
         items: {
           create: Object.entries(picks).map(([category, entity], index) => ({
             category,
@@ -58,7 +84,25 @@ export async function POST(request: NextRequest) {
       include: { items: true },
     });
 
-    return NextResponse.json({ token, picks }, { status: 201 });
+    // Write token JSON file to public/tokens/
+    const tokenJson = buildTokenJSON(
+      token.id,
+      seed,
+      title,
+      token.createdAt.toISOString(),
+      rarityTier,
+      walletAddress ?? null,
+      picks as Parameters<typeof buildTokenJSON>[6]
+    );
+    try {
+      const tokensDir = join(process.cwd(), 'public', 'tokens');
+      await mkdir(tokensDir, { recursive: true });
+      await writeFile(join(tokensDir, `${token.id}.json`), JSON.stringify(tokenJson, null, 2), 'utf8');
+    } catch (fileErr) {
+      console.warn('Could not write token JSON file:', fileErr);
+    }
+
+    return NextResponse.json({ token, picks, tokenJson }, { status: 201 });
   } catch (error) {
     console.error('Error creating token:', error);
     return NextResponse.json({ error: 'Failed to create token' }, { status: 500 });

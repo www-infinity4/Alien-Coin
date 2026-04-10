@@ -314,70 +314,100 @@ async function main() {
       region: "Eastern United States",
       climateTags: JSON.stringify(["temperate", "montane", "high-rainfall"]),
       permitNotes: "Planting within 200ft of trail requires ATC permit. Contact local trail maintaining club.",
-      sources: JSON.stringify(["Appalachian Trail Conservancy", "USDA Forest Service"])
+      sources: JSON.stringify(["Appalachian Trail Conservancy", "USDA Forest Service"]),
+      ecoregion: "Blue Ridge Ecoregion",
+      referenceLat: 36.5,
+      referenceLng: -82.0,
     },
     {
       name: "Gulf Coast Wetlands",
       region: "Southern United States",
       climateTags: JSON.stringify(["subtropical", "coastal", "high-humidity"]),
       permitNotes: "Section 404 wetlands permit required for any ground disturbance. Contact Army Corps of Engineers.",
-      sources: JSON.stringify(["EPA Wetlands Program", "NOAA Coastal Management"])
+      sources: JSON.stringify(["EPA Wetlands Program", "NOAA Coastal Management"]),
+      ecoregion: "Gulf Coastal Plain",
+      referenceLat: 29.5,
+      referenceLng: -90.0,
     },
     {
       name: "Great Plains Prairie",
       region: "Central United States",
       climateTags: JSON.stringify(["semi-arid", "continental", "wind-exposed"]),
       permitNotes: "Check county soil conservation district for native plant programs and cost-share opportunities.",
-      sources: JSON.stringify(["NRCS Prairie Pothole Region", "The Nature Conservancy"])
+      sources: JSON.stringify(["NRCS Prairie Pothole Region", "The Nature Conservancy"]),
+      ecoregion: "Central Tallgrass Prairie",
+      referenceLat: 38.5,
+      referenceLng: -97.0,
     },
     {
       name: "Pacific Northwest Rainforest",
       region: "Northwestern United States",
       climateTags: JSON.stringify(["oceanic", "high-rainfall", "mild-winters"]),
       permitNotes: "State DNR approval needed for riparian plantings. Check for salmon habitat protections.",
-      sources: JSON.stringify(["WA Dept of Natural Resources", "OR Dept of Forestry"])
+      sources: JSON.stringify(["WA Dept of Natural Resources", "OR Dept of Forestry"]),
+      ecoregion: "Pacific Temperate Rainforest",
+      referenceLat: 47.5,
+      referenceLng: -123.5,
     },
     {
       name: "Sonoran Desert Edge",
       region: "Southwestern United States",
       climateTags: JSON.stringify(["arid", "hot-dry-summers", "mild-winters"]),
       permitNotes: "Saguaro cactus is protected - permit required to move or transplant. Contact AZ Game & Fish.",
-      sources: JSON.stringify(["Arizona Native Plant Society", "Sonoran Desert Museum"])
+      sources: JSON.stringify(["Arizona Native Plant Society", "Sonoran Desert Museum"]),
+      ecoregion: "Sonoran Desert",
+      referenceLat: 32.5,
+      referenceLng: -111.5,
     },
     {
       name: "Mississippi River Delta",
       region: "Louisiana, Mississippi",
       climateTags: JSON.stringify(["subtropical", "floodplain", "humid"]),
       permitNotes: "Coastal Use Permit from LA CPRA required for shoreline plantings. NRCS cost-share available.",
-      sources: JSON.stringify(["Louisiana CPRA", "Mississippi River Delta Coalition"])
+      sources: JSON.stringify(["Louisiana CPRA", "Mississippi River Delta Coalition"]),
+      ecoregion: "Mississippi Alluvial Valley",
+      referenceLat: 32.0,
+      referenceLng: -91.5,
     },
     {
       name: "New England Forests",
       region: "Northeastern United States",
       climateTags: JSON.stringify(["humid-continental", "cold-winters", "four-seasons"]),
       permitNotes: "Check local conservation commission for buffer zone requirements near wetlands and streams.",
-      sources: JSON.stringify(["New England Wild Flower Society", "Harvard Forest"])
+      sources: JSON.stringify(["New England Wild Flower Society", "Harvard Forest"]),
+      ecoregion: "New England/Acadian Forests",
+      referenceLat: 44.5,
+      referenceLng: -71.5,
     },
     {
       name: "Rocky Mountain Foothills",
       region: "Western United States",
       climateTags: JSON.stringify(["semi-arid", "mountain", "variable"]),
       permitNotes: "Fire-wise planting guidelines apply. Check with local fire district for defensible space requirements.",
-      sources: JSON.stringify(["Colorado State Forest Service", "Rocky Mountain Research Station"])
+      sources: JSON.stringify(["Colorado State Forest Service", "Rocky Mountain Research Station"]),
+      ecoregion: "Southern Rockies",
+      referenceLat: 39.5,
+      referenceLng: -105.5,
     },
     {
       name: "Florida Everglades Buffer",
       region: "Southern Florida",
       climateTags: JSON.stringify(["tropical", "wet-dry-season", "limestone"]),
       permitNotes: "South Florida Water Management District permit required. Invasive species removal may be incentivized.",
-      sources: JSON.stringify(["Everglades Foundation", "SFWMD"])
+      sources: JSON.stringify(["Everglades Foundation", "SFWMD"]),
+      ecoregion: "Floridian Pine Savanna",
+      referenceLat: 26.0,
+      referenceLng: -80.5,
     },
     {
       name: "Great Lakes Shoreline",
       region: "Great Lakes Region",
       climateTags: JSON.stringify(["humid-continental", "lake-effect", "cold-winters"]),
       permitNotes: "Great Lakes Coastal Review required for plantings within 500ft of water. EGLE permit in Michigan.",
-      sources: JSON.stringify(["Great Lakes Commission", "Michigan DEQ"])
+      sources: JSON.stringify(["Great Lakes Commission", "Michigan DEQ"]),
+      ecoregion: "Great Lakes",
+      referenceLat: 45.5,
+      referenceLng: -84.0,
     }
   ];
 

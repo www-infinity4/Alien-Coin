@@ -105,6 +105,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ token, picks, tokenJson }, { status: 201 });
   } catch (error) {
     console.error('Error creating token:', error);
-    return NextResponse.json({ error: 'Failed to create token' }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'Failed to create token';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -130,7 +130,10 @@ export default function HomePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ walletAddress: wallet?.address }),
       });
-      if (!res.ok) throw new Error('Failed to generate token');
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(body.error ?? 'Failed to generate token');
+      }
       const data = await res.json() as {
         token: { id: string; title: string; summary: string; createdAt: string; rarityTier: string };
       };

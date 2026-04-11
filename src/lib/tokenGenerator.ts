@@ -9,6 +9,9 @@ export function generateSeed(userId?: string): string {
 }
 
 export function seededPick<T>(items: T[], seed: string, salt: string): T {
+  if (items.length === 0) {
+    throw new Error(`No items found for category "${salt}". Ensure the database is seeded (run: npm run seed).`);
+  }
   const combined = seed + salt;
   let hash = 0;
   for (let i = 0; i < combined.length; i++) {

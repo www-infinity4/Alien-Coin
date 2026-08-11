@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { buildFallbackToken, decodeFallbackId } from '@/lib/fallbackCorpus';
 
 async function fetchEntityData(category: string, entityId: string) {
   switch (category) {
@@ -17,29 +18,15 @@ async function fetchEntityData(category: string, entityId: string) {
   }
 }
 
-export async function GET(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(_request: NextRequest,{ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const fallbackSeed=decodeFallbackId(id);
+  if(fallbackSeed) return NextResponse.json(buildFallbackToken(fallbackSeed));
+
   try {
-    const { id } = await params;
-
-    const token = await prisma.token.findUnique({
-      where: { id },
-      include: { items: { orderBy: { displayOrder: 'asc' } }, citations: true },
-    });
-
-    if (!token) {
-      return NextResponse.json({ error: 'Token not found' }, { status: 404 });
-    }
-
-    const itemsWithData = await Promise.all(
-      token.items.map(async (item) => {
-        const entityData = await fetchEntityData(item.category, item.entityId);
-        return { ...item, entityData };
-      })
-    );
-
+    const token = await prisma.token.findUnique({where:{id},include:{items:{orderBy:{displayOrder:'asc'}},citations:true}});
+    if (!token) return NextResponse.json({ error: 'Token not found' }, { status: 404 });
+    const itemsWithData = await Promise.all(token.items.map(async item=>({...item,entityData:await fetchEntityData(item.category,item.entityId)})));
     return NextResponse.json({ ...token, items: itemsWithData });
   } catch (error) {
     console.error('Error fetching token:', error);

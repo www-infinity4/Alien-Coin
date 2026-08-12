@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { generateReport } from '@/lib/reportGenerator';
+import { buildAlienResearch } from '@/lib/infinityResearchClient';
 
 async function fetchEntityData(category: string, entityId: string) {
   switch (category) {
@@ -41,7 +42,8 @@ export async function GET(
       })
     );
 
-    const html = generateReport({ ...token, items: itemsWithData });
+    const research = await buildAlienResearch({ ...token, items: itemsWithData });
+    const html = generateReport({ ...token, items: itemsWithData, research });
 
     return new NextResponse(html, {
       status: 200,

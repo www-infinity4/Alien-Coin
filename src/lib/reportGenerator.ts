@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import type { AlienResearchEnvelope } from './infinityResearchClient';
+
 interface TokenWithItems {
   id: string;
   title: string;
@@ -14,6 +16,7 @@ interface TokenWithItems {
     notes?: string | null;
     entityData?: any;
   }>;
+  research?: AlienResearchEnvelope;
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -150,6 +153,48 @@ function safeParseArray(val: unknown): string[] {
     try { return JSON.parse(val); } catch { return [val]; }
   }
   return [];
+}
+
+
+function renderResearch(research?: AlienResearchEnvelope): string {
+  if (!research) {
+    return '<p class="notes">Research record unavailable for this report.</p>';
+  }
+
+  const sourceHtml = research.sources.length
+    ? research.sources.map(source => `
+        <li>
+          <a href="${escapeHtml(source.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(source.url)}</a>
+          — OBSERVED: source URL captured; content not reviewed
+        </li>`).join('')
+    : '<li>No external source URLs were captured in this bundle.</li>';
+  const hashes = Object.entries(research.novelty).map(([name, value]) => `
+    <p><strong>${escapeHtml(name)}:</strong> <code>${escapeHtml(value ?? 'none')}</code></p>`
+  ).join('');
+
+  return `
+    <div class="cards-grid">
+      <article class="card">
+        <div class="card-header"><span class="category-badge">INFERRED</span><h3>Project Research</h3></div>
+        <div class="card-body"><p>${escapeHtml(research.projectArticle)}</p></div>
+      </article>
+      <article class="card">
+        <div class="card-header"><span class="category-badge">INFERRED · EXPLORATORY LINK</span><h3>Discovery Research</h3></div>
+        <div class="card-body"><p>${escapeHtml(research.discoveryArticle)}</p></div>
+      </article>
+      <article class="card">
+        <div class="card-header"><h3>Evidence, Lineage & Runtime</h3></div>
+        <div class="card-body">
+          <p><strong>Runtime:</strong> ${escapeHtml(research.runtime.status)} · model ${escapeHtml(research.runtime.model ?? 'deterministic fallback')}</p>
+          <p><strong>Evidence rule:</strong> Model-written prose remains INFERRED. A link is not proof its contents were reviewed.</p>
+          <h4>Captured sources</h4><ul>${sourceHtml}</ul>
+          <h4>Novelty hashes</h4>${hashes}
+          <h4>Proposed next action</h4>
+          <pre>${escapeHtml(JSON.stringify(research.toolProposal.proposal, null, 2))}</pre>
+          <p><strong>Executed:</strong> false · application validation required</p>
+        </div>
+      </article>
+    </div>`;
 }
 
 export function generateReport(token: TokenWithItems): string {
@@ -360,6 +405,9 @@ export function generateReport(token: TokenWithItems): string {
         <div class="cards-grid">
           ${itemsHtml}
         </div>
+
+        <h2 class="section-title">Required Token Research</h2>
+        ${renderResearch(token.research)}
       </main>
 
       <footer>

@@ -34,3 +34,28 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Shared Infinity research runtime
+
+Each generated token report now includes a research record produced through the shared local
+REASONER and TOOL_ROUTER API. Set `INFINITY_AI_BASE_URL` on the Next.js server when the runtime
+is not at the default `http://127.0.0.1:11435`.
+
+The adapter deliberately:
+
+- keeps model prose labeled `INFERRED`;
+- labels captured HTTPS source URLs as `OBSERVED` and “content not reviewed”;
+- records query, source-set, article, token-lineage, and user-path SHA-256 hashes;
+- returns proposed tool calls with `executed: false`; and
+- falls back to a deterministic article when the runtime is unavailable.
+
+The loopback default refers to the machine running the Next.js server. In production, run the
+Infinity runtime beside that server or configure a private reachable service; a visitor's browser
+cannot supply its own localhost to a server-rendered route.
+
+Run the adapter contract test with:
+
+```bash
+npx esbuild src/lib/testInfinityResearchClient.ts --bundle --platform=node --format=esm --outfile=/tmp/alien-research-test.mjs
+node /tmp/alien-research-test.mjs
+```

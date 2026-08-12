@@ -20,8 +20,8 @@ export function buildFallbackToken(seed:string, walletAddress?:string|null) {
   const categories=['song','movie','tree','treatIdea','greekGod','coin','quote','gemstone','meal'];
   const picked=categories.map((category,index)=>({category,entityData:pick(category,seed),displayOrder:index}));
   const id='fallback_'+Buffer.from(seed).toString('base64url');
-  const song=picked.find(x=>x.category==='song')!.entityData as {title:string};
-  const coin=picked.find(x=>x.category==='coin')!.entityData as {name:string};
+  const song=picked.find(x=>x.category==='song')!.entityData as unknown as {title:string};
+  const coin=picked.find(x=>x.category==='coin')!.entityData as unknown as {name:string};
   const createdMatch=seed.match(/\|created=(\d+)$/); const createdAt=new Date(createdMatch?Number(createdMatch[1]):0).toISOString();
   const items=picked.map((x,index)=>({id:`${id}:${x.category}`,category:x.category,entityId:x.entityData.id,displayOrder:index,notes:'Database-independent fallback bundle',entityData:x.entityData}));
   return {id,seed,version:'fallback-1',title:`Alien Coin Bundle — ${song.title} × ${coin.name}`,summary:'A deterministic Alien Coin experience bundle minted from the resilient fallback corpus. Database-backed enrichment can replace or extend these seeds later.',createdAt,rarityTier:'Utility',proofHash:createHash('sha256').update(`${seed}:${createdAt}`).digest('hex'),ownerWallet:walletAddress??null,items,citations:[]};

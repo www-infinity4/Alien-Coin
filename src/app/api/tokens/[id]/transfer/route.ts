@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { verifyOwnerTransfer } from '@/lib/ownerVerification';
 
 export async function POST(
   request: NextRequest,
@@ -18,6 +19,11 @@ export async function POST(
     }
     if (fromAddress === toAddress) {
       return NextResponse.json({ error: 'Cannot transfer to yourself' }, { status: 400 });
+    }
+    const ownerVerification = await verifyOwnerTransfer(request, fromAddress);
+    if (!ownerVerification.verified) {
+      return NextResponse.json({ error: ownerVerification.reason, code: 'OWNER_VERIFICATION_REQUIRED',
+        required: ['server-validated passkey session', 'current-owner authorization', 'atomic sale settlement'] }, { status: 503 });
     }
 
     const token = await prisma.token.findUnique({ where: { id } });

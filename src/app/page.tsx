@@ -14,12 +14,13 @@ interface TokenSummary {
 interface WalletIdentity {
   address: string;
   shortId: string;
-  blockHeight: number;
   createdAt: number;
 }
 
-const WALLET_KEY = 'alien-coin-wallet';
+const WALLET_KEY = 'infinity-unified-wallet-link-v1';
 const TOKENS_KEY = 'alien-coin-tokens';
+const UNIFIED_WALLET_URL = 'https://www-infinity4.github.io/Mint-For-Infinity/unified-wallet.html';
+const UNIFIED_WALLET_ORIGIN = 'https://www-infinity4.github.io';
 
 const RARITY_STYLES: Record<string, { border: string; glow: string; badge: string; label: string }> = {
   Heirloom: {
@@ -42,37 +43,12 @@ const RARITY_STYLES: Record<string, { border: string; glow: string; badge: strin
   },
 };
 
-function deriveAddress(hash: string, nonce: string): string {
-  const combined = hash + nonce;
-  const chars = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
-  let result = 'bc1q';
-  for (let i = 0; i < 38; i++) {
-    const code =
-      combined.charCodeAt(i % combined.length) ^
-      combined.charCodeAt((i * 7) % combined.length);
-    result += chars[code % chars.length];
-  }
-  return result;
-}
-
-function deriveShortId(hash: string): string {
-  const emojis = ['⚡', '🔮', '🌊', '🔥', '💎', '🌙', '⭐', '🧲'];
-  const a = parseInt(hash.slice(0, 4), 16) % emojis.length;
-  const b = parseInt(hash.slice(4, 8), 16) % emojis.length;
-  return `${emojis[a]}${emojis[b]} ${hash.slice(0, 8).toUpperCase()}`;
-}
-
 export default function HomePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [recentTokens, setRecentTokens] = useState<TokenSummary[]>([]);
   const [wallet, setWallet] = useState<WalletIdentity | null>(null);
   const [walletLoading, setWalletLoading] = useState(false);
-  const [nonce] = useState(() => {
-    const buf = new Uint8Array(8);
-    crypto.getRandomValues(buf);
-    return Array.from(buf, (b) => b.toString(16).padStart(2, '0')).join('');
-  });
 
   useEffect(() => {
     try {
@@ -85,23 +61,30 @@ export default function HomePage() {
 
   const connectWallet = useCallback(async () => {
     setWalletLoading(true);
+    setError(null);
     try {
-      let hash: string;
-      let blockHeight = 0;
-      try {
-        const res = await fetch('https://blockchain.info/latestblock', { cache: 'no-store' });
-        const block = await res.json() as { hash: string; height: number };
-        hash = block.hash;
-        blockHeight = block.height;
-      } catch {
-        const buf = new Uint8Array(32);
-        crypto.getRandomValues(buf);
-        hash = Array.from(buf, (b) => b.toString(16).padStart(2, '0')).join('');
-      }
+      const walletId = await new Promise<string>((resolve, reject) => {
+        const popupUrl = UNIFIED_WALLET_URL + '?connect=1&origin=' + encodeURIComponent(window.location.origin);
+        const popup = window.open(popupUrl, 'infinity-unified-wallet', 'width=520,height=760');
+        if (!popup) return reject(new Error('The unified wallet window was blocked. Allow the popup and try again.'));
+        const timeout = window.setTimeout(() => {
+          window.removeEventListener('message', receiveWallet);
+          reject(new Error('Unified wallet approval timed out.'));
+        }, 120000);
+        function receiveWallet(event: MessageEvent) {
+          if (event.origin !== UNIFIED_WALLET_ORIGIN || event.data?.type !== 'INFINITY_WALLET_CONNECTED') return;
+          const receivedId = String(event.data.wallet?.walletId || '');
+          if (!receivedId.startsWith('infinity-wallet:')) return;
+          window.clearTimeout(timeout);
+          window.removeEventListener('message', receiveWallet);
+          popup?.close();
+          resolve(receivedId);
+        }
+        window.addEventListener('message', receiveWallet);
+      });
       const id: WalletIdentity = {
-        address: deriveAddress(hash, nonce),
-        shortId: deriveShortId(hash),
-        blockHeight,
+        address: walletId,
+        shortId: 'Wallet ' + walletId.slice(-8).toUpperCase(),
         createdAt: Date.now(),
       };
       localStorage.setItem(WALLET_KEY, JSON.stringify(id));
@@ -111,10 +94,12 @@ export default function HomePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ walletAddress: id.address }),
       }).catch(() => {});
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unified wallet connection failed');
     } finally {
       setWalletLoading(false);
     }
-  }, [nonce]);
+  }, []);
 
   const disconnectWallet = useCallback(() => {
     localStorage.removeItem(WALLET_KEY);
@@ -124,6 +109,7 @@ export default function HomePage() {
   const generateToken = async () => {
     setLoading(true);
     setError(null);
+    const walletImportWindow = wallet ? window.open('about:blank', 'infinity-unified-wallet-import', 'width=520,height=760') : null;
     try {
       const res = await fetch('/api/tokens', {
         method: 'POST',
@@ -132,7 +118,7 @@ export default function HomePage() {
       });
       if (!res.ok) throw new Error('Failed to generate token');
       const data = await res.json() as {
-        token: { id: string; title: string; summary: string; createdAt: string; rarityTier: string };
+        token: { id: string; title: string; summary: string; createdAt: string; rarityTier: string; proofHash?: string };
       };
       const newToken: TokenSummary = {
         id: data.token.id,
@@ -144,8 +130,23 @@ export default function HomePage() {
       const updated = [newToken, ...recentTokens].slice(0, 10);
       setRecentTokens(updated);
       localStorage.setItem(TOKENS_KEY, JSON.stringify(updated));
+      if (walletImportWindow && wallet) {
+        const importUrl = new URL(UNIFIED_WALLET_URL);
+        importUrl.searchParams.set('connect', '1');
+        importUrl.searchParams.set('origin', window.location.origin);
+        importUrl.searchParams.set('action', 'import-collectible');
+        importUrl.searchParams.set('tokenId', data.token.id);
+        importUrl.searchParams.set('kind', 'ALIEN_COIN');
+        importUrl.searchParams.set('sourceSystem', 'ALIEN_COIN');
+        importUrl.searchParams.set('sourceEventId', 'alien-mint:' + data.token.id);
+        importUrl.searchParams.set('title', data.token.title);
+        importUrl.searchParams.set('contentDigest', data.token.proofHash || ('token-id:' + data.token.id));
+        importUrl.searchParams.set('timestamp', data.token.createdAt);
+        walletImportWindow.location.href = importUrl.toString();
+      }
       window.location.href = `/tokens/${data.token.id}`;
     } catch (err) {
+      walletImportWindow?.close();
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);
@@ -192,7 +193,7 @@ export default function HomePage() {
                 disabled={walletLoading}
                 className="text-xs px-3 py-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/20 transition-colors disabled:opacity-50"
               >
-                {walletLoading ? '⏳ Connecting…' : '🔑 Connect Wallet'}
+                {walletLoading ? '⏳ Connecting…' : '🔑 Connect Unified Wallet'}
               </button>
             )}
           </div>
@@ -250,7 +251,7 @@ export default function HomePage() {
               disabled={walletLoading}
               className="px-8 py-4 border border-cyan-500/30 text-cyan-400 font-bold text-lg rounded-full hover:bg-cyan-500/10 transition-all duration-300 disabled:opacity-50"
             >
-              {walletLoading ? '⏳…' : '🔑 Connect Wallet First'}
+              {walletLoading ? '⏳…' : '🔑 Connect Unified Wallet First'}
             </button>
           )}
         </div>
@@ -391,4 +392,3 @@ export default function HomePage() {
     </div>
   );
 }
-

@@ -59,3 +59,14 @@ Run the adapter contract test with:
 npx esbuild src/lib/testInfinityResearchClient.ts --bundle --platform=node --format=esm --outfile=/tmp/alien-research-test.mjs
 node /tmp/alien-research-test.mjs
 ```
+
+## Unified Infinity Wallet
+
+The mint no longer creates an isolated Bitcoin-shaped browser identity. **Connect Unified Wallet**
+opens the central Infinity Wallet for explicit approval, then Alien Coin uses the returned Infinity
+wallet ID for its server token owner records.
+
+Read [`docs/UNIFIED_WALLET_AND_VERIFICATION.md`](docs/UNIFIED_WALLET_AND_VERIFICATION.md) for whole-
+token transfers, protected rarity discovery, attributed-signature rules, passkey behavior, and the
+truthful Stripe/Plaid/GitHub boundary. Provider readiness is machine-readable in
+[`data/verification-provider-readiness.json`](data/verification-provider-readiness.json).

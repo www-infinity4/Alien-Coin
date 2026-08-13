@@ -1,0 +1,21 @@
+{
+  "schema": "infinity/verification-provider-readiness/v1",
+  "passkey": {
+    "state": "NOT_CONFIGURED",
+    "purpose": "Phone user verification for owner approval; the site never receives fingerprint data"
+  },
+  "stripeIdentity": {
+    "state": "NOT_CONFIGURED",
+    "requires": ["approved Stripe account", "server credentials", "webhook verification"]
+  },
+  "plaidAccount": {
+    "state": "NOT_CONFIGURED",
+    "requires": ["approved Plaid account", "server credentials", "link token endpoint", "webhook verification"]
+  },
+  "githubProvenance": {
+    "state": "DESIGN_ONLY",
+    "purpose": "Commit and content provenance; not a substitute for identity, bank, payment, or rights verification"
+  },
+  "attributedContributionPolicy": "FAIL_CLOSED_UNLESS_IDENTITY_AND_RIGHTS_ARE_VERIFIED",
+  "collectibleSalePolicy": "DISCOVERY_LISTING_MAY_BE_AUTOMATIC_BUT_OWNER_APPROVAL_AND_ATOMIC_TRANSFER_ARE_REQUIRED"
+}

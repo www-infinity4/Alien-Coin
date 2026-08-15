@@ -38,6 +38,7 @@ export default function RootLayout({
             });
           }
         `}} />
+        <script src="https://www-infinity4.github.io/Mint-For-Infinity/infinity-wallet-menu.js" defer></script>
       </body>
     </html>
   );

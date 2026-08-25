@@ -5,10 +5,15 @@ import { prisma } from '@/lib/prisma';
 import { generateSeed, seededPick } from '@/lib/tokenGenerator';
 import { computeRarityTier, computeProofHash, buildTokenJSON } from '@/lib/rarityEngine';
 import { buildFallbackToken } from '@/lib/fallbackCorpus';
+import { buildCoinMediaCards, type SonaCapture } from '@/lib/mediaCard';
 
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => ({}));
-  const { userId, walletAddress } = body as { userId?: string; walletAddress?: string };
+  const { userId, walletAddress, mediaCaptures = {} } = body as {
+    userId?: string;
+    walletAddress?: string;
+    mediaCaptures?: { movie?: SonaCapture; song?: SonaCapture };
+  };
   const seed = generateSeed(userId ?? walletAddress);
 
   try {
@@ -33,13 +38,23 @@ export async function POST(request: NextRequest) {
     if (walletAddress) await prisma.user.upsert({where:{walletAddress},update:{},create:{walletAddress}});
     const createdAt = new Date().toISOString(); const proofHash = computeProofHash(seed, title, createdAt);
     const token = await prisma.token.create({data:{seed,title,summary,rarityTier,proofHash,ownerWallet:walletAddress??null,items:{create:Object.entries(picks).map(([category,entity],index)=>({category,entityId:(entity as {id:string}).id,displayOrder:index}))}},include:{items:true}});
-    const tokenJson = buildTokenJSON(token.id,seed,title,token.createdAt.toISOString(),rarityTier,walletAddress??null,picks as Parameters<typeof buildTokenJSON>[6]);
+    const mediaCards = buildCoinMediaCards(token.id, {
+      movie: picks.movie as Parameters<typeof buildCoinMediaCards>[1]['movie'],
+      song: picks.song as Parameters<typeof buildCoinMediaCards>[1]['song'],
+    }, mediaCaptures);
+    const tokenJson = buildTokenJSON(token.id,seed,title,token.createdAt.toISOString(),rarityTier,walletAddress??null,picks as Parameters<typeof buildTokenJSON>[6],mediaCards);
     try { const tokensDir=join(process.cwd(),'public','tokens'); await mkdir(tokensDir,{recursive:true}); await writeFile(join(tokensDir,`${token.id}.json`),JSON.stringify(tokenJson,null,2),'utf8'); } catch (fileErr) { console.warn('Could not write token JSON file:',fileErr); }
-    return NextResponse.json({token,picks,tokenJson,mode:'DATABASE'}, {status:201});
+    return NextResponse.json({token,picks,mediaCards,tokenJson,mode:'DATABASE'}, {status:201});
   } catch (error) {
     console.warn('Database mint unavailable; using resilient Alien Coin fallback:', error);
     const fallbackSeed=`${seed}:fallback|created=${Date.now()}`;
     const token=buildFallbackToken(fallbackSeed,walletAddress??null);
-    return NextResponse.json({token,picks:Object.fromEntries(token.items.map(i=>[i.category,i.entityData])),tokenJson:token,mode:'FALLBACK',warning:'Database corpus unavailable; minted deterministic fallback bundle.'},{status:201});
+    const fallbackPicks=Object.fromEntries(token.items.map(i=>[i.category,i.entityData]));
+    const mediaCards=buildCoinMediaCards(token.id, {
+      movie: fallbackPicks.movie as Parameters<typeof buildCoinMediaCards>[1]['movie'],
+      song: fallbackPicks.song as Parameters<typeof buildCoinMediaCards>[1]['song'],
+    }, mediaCaptures);
+    const tokenJson={...token,media_cards:mediaCards};
+    return NextResponse.json({token,picks:fallbackPicks,mediaCards,tokenJson,mode:'FALLBACK',warning:'Database corpus unavailable; minted deterministic fallback bundle.'},{status:201});
   }
 }

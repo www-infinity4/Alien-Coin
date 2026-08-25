@@ -1,4 +1,5 @@
 import { createHash } from 'crypto';
+import type { MediaCard } from './mediaCard';
 
 export type RarityTier = 'Heirloom' | 'Provenance' | 'Utility';
 
@@ -52,6 +53,7 @@ export interface TokenJSON {
     infinity_synapses_url: string;
   };
   report_url: string;
+  media_cards: MediaCard[];
 }
 
 export function buildTokenJSON(
@@ -61,7 +63,8 @@ export function buildTokenJSON(
   createdAt: string,
   rarityTier: string,
   ownerWallet: string | null,
-  picks: Record<string, { id: string; title?: string; name?: string; mealName?: string; commonName?: string; archiveUrl?: string | null; coinTypeTags?: string }>
+  picks: Record<string, { id: string; title?: string; name?: string; mealName?: string; commonName?: string; archiveUrl?: string | null; coinTypeTags?: string }>,
+  mediaCards: MediaCard[] = []
 ): TokenJSON {
   const proofHash = computeProofHash(seed, title, createdAt);
   const manifest: Record<string, { id: string; name?: string; title?: string; ref?: string }> = {};
@@ -87,5 +90,6 @@ export function buildTokenJSON(
       infinity_synapses_url: 'https://infinity-synapses.vercel.app/research',
     },
     report_url: `/api/tokens/${tokenId}/report`,
+    media_cards: mediaCards,
   };
 }

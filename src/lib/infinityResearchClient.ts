@@ -61,10 +61,10 @@ function sourceUrls(items: BundleItem[]): string[] {
 }
 
 async function post(path: string, payload: Record<string, unknown>): Promise<Record<string, unknown>> {
-  const base = (process.env.INFINITY_AI_BASE_URL || 'http://127.0.0.1:11435').replace(/\/$/, '');
+  const base = (process.env.INFINITY_AI_BASE_URL || 'https://infinity-rogers.marvaseater.workers.dev').replace(/\/$/, '');
   const response = await fetch(base + path, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload), signal: AbortSignal.timeout(1800), cache: 'no-store',
+    body: JSON.stringify(payload), signal: AbortSignal.timeout(8000), cache: 'no-store',
   });
   if (!response.ok) throw new Error(`Infinity AI ${response.status}`);
   return response.json() as Promise<Record<string, unknown>>;

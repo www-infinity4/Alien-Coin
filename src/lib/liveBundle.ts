@@ -1,4 +1,5 @@
 type SearchResult={title?:string;url?:string;content?:string;description?:string;thumbnail?:string;img_src?:string};
+export type BundleProfile={zone?:string;ingredients?:string;signals?:string[];round?:number};
 export type LiveCard={id:string;category:string;entityId:string;displayOrder:number;notes:string;entityData:Record<string,unknown>&{id:string}};
 const SEARCH='https://orange-brook-a2ac.marvaseater.workers.dev/search';
 const GPT='https://infinity-rogers.marvaseater.workers.dev/v1/chat';
@@ -7,37 +8,56 @@ async function search(query:string,category='general'){
   const response=await fetch(url,{cache:'no-store',signal:AbortSignal.timeout(8000)});
   if(!response.ok)throw new Error('search unavailable');
   const body=await response.json() as {results?:SearchResult[]};
-  return (body.results||[]).filter(item=>item.url&&item.title).slice(0,5);
+  return (body.results||[]).filter(item=>item.url&&item.title).slice(0,8);
 }
-function best(results:SearchResult[],prefer?:RegExp){return results.find(x=>prefer?.test(x.url||''))||results[0]}
 function clean(value?:string){return String(value||'').replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim()}
-async function storyline(cards:Array<Record<string,unknown>>){
-  const input='Write one concise connecting storyline for this Alien Coin asset bundle. Explain why the movie, song, poem, tree and recipe fit together. Return plain text only.';
-  const response=await fetch(GPT,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({input,context:{application:'Alien Coin',task:'mint-bundle-storyline',verified_context:{cards}}}),signal:AbortSignal.timeout(18000),cache:'no-store'});
+function best(results:SearchResult[],round:number,prefer?:RegExp){
+  const preferred=prefer?results.filter(x=>prefer.test(x.url||'')):results;
+  const pool=preferred.length?preferred:results; return pool[round%Math.max(pool.length,1)];
+}
+async function gpt(input:string,context:Record<string,unknown>){
+  const response=await fetch(GPT,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({input,context:{application:'Alien Coin',...context}}),signal:AbortSignal.timeout(18000),cache:'no-store'});
   if(!response.ok)throw new Error('GPT unavailable');
   const body=await response.json() as {output_text?:string;output?:string};
   return clean(body.output_text||body.output);
 }
-export async function buildLiveAssetCards(profile:{zone?:string;ingredients?:string}={}):Promise<LiveCard[]>{
+function signalText(profile:BundleProfile){
+  return (profile.signals||[]).map(clean).filter(Boolean).slice(0,24).join(' ');
+}
+export async function buildLiveAssetCards(profile:BundleProfile={}):Promise<LiveCard[]>{
+  const round=Math.max(0,Number(profile.round)||0);
   const zone=clean(profile.zone)||'Iowa zone 5';
   const ingredients=clean(profile.ingredients)||'seasonal pantry ingredients';
+  const interests=signalText(profile)||'music cinema history nature collecting practical knowledge';
+  const focus=interests.split(' ').slice(round%8,round%8+8).join(' ')||interests;
   const jobs=[
-    ['video','full movie classic film site:youtube.com/watch','videos'],
-    ['song','famous song official audio site:youtube.com/watch','videos'],
-    ['poem','classic poem Poetry Foundation public domain','general'],
+    ['video',focus+' full movie documentary site:youtube.com/watch','videos',/youtube\.com|youtu\.be/i],
+    ['song',focus+' famous song official audio site:youtube.com/watch','videos',/youtube\.com|youtu\.be/i],
+    ['poem',focus+' poem Poetry Foundation poets.org','general'],
     ['tree','native tree '+zone+' USDA extension','general'],
-    ['meal','recipe '+ingredients,'general'],
-    ['coupon','coupon local offer '+zone,'general'],
-    ['collectible','interesting collectible art mineral coin museum','images'],
+    ['meal','recipe '+ingredients+' '+focus,'general'],
+    ['coupon','coupon useful offer '+zone+' '+focus,'general'],
+    ['terraPreta','Terra Preta burnt soil biochar ancient civilization archaeology','general'],
+    ['civilization',focus+' important discovery past present future civilization','general'],
+    ['record',focus+' unusual world record remarkable fact Guinness museum','general'],
+    ['book',focus+' book Internet Archive Open Library','general'],
+    ['valuables',focus+' valuable jewel coin antique museum auction history','images'],
+    ['collectible',focus+' collectible art mineral coin museum','images'],
   ] as const;
-  const settled=await Promise.all(jobs.map(async([category,q,kind])=>{
-    try{return {category,result:best(await search(q,kind),category==='video'||category==='song'?/youtube\.com|youtu\.be/i:undefined)}}
-    catch{return {category,result:undefined}}
+  const settled=await Promise.all(jobs.map(async([category,q,kind,prefer])=>{
+    try{return {category,result:best(await search(q,kind),round,prefer)}}catch{return {category,result:undefined}}
   }));
+  const base=20+(round*100);
   const cards:LiveCard[]=settled.filter(x=>x.result).map((entry,index)=>{
     const item=entry.result!; const url=item.url!; const summary=clean(item.content||item.description);
-    return {id:'live:'+entry.category+':'+index,category:entry.category,entityId:url,displayOrder:20+index,notes:'Live Infinity 5 search selection',entityData:{id:url,title:clean(item.title),summary,url,sourceUrl:url,youtubeUrl:/youtube\.com|youtu\.be/i.test(url)?url:undefined,imageUrl:item.img_src||item.thumbnail,zone:entry.category==='tree'?zone:undefined,ingredients:entry.category==='meal'?ingredients:undefined}};
+    return {id:'live:'+round+':'+entry.category+':'+index,category:entry.category,entityId:url,displayOrder:base+index,notes:'Selected through Infinity 5 from Phi interest signals',entityData:{id:url,title:clean(item.title),summary,url,sourceUrl:url,youtubeUrl:/youtube\.com|youtu\.be/i.test(url)?url:undefined,imageUrl:item.img_src||item.thumbnail,zone:entry.category==='tree'?zone:undefined,ingredients:entry.category==='meal'?ingredients:undefined,round}};
   });
-  try{const story=await storyline(cards.map(x=>x.entityData)); if(story)cards.push({id:'live:story',category:'story',entityId:'gpt:alien-coin-story',displayOrder:40,notes:'Generated by the connected Infinity GPT route',entityData:{id:'gpt:alien-coin-story',title:'Your Alien Coin Story',summary:story,sourceUrl:null}})}catch{}
+  const evidence=cards.map(x=>({category:x.category,title:x.entityData.title,summary:x.entityData.summary,sourceUrl:x.entityData.sourceUrl}));
+  const generated=await Promise.all([
+    gpt('Write a compelling 350-word article about the most civilization-important subject in this evidence. Connect past, present and future. Do not invent facts; clearly distinguish inference.',{task:'civilization-article',verified_context:{focus,evidence}}).then(summary=>({category:'article',title:'Civilization File',summary})).catch(()=>null),
+    gpt('Write a short original comedy skit inspired by these interests. Keep it friendly, specific and entertaining. Do not imitate a living comedian.',{task:'original-comedy-skit',verified_context:{focus,evidence}}).then(summary=>({category:'comedy',title:'The Alien Coin Comedy Break',summary})).catch(()=>null),
+    gpt('Write one concise storyline explaining why this edition’s entertainment, knowledge and practical cards belong together for this holder.',{task:'bundle-storyline',verified_context:{focus,evidence}}).then(summary=>({category:'story',title:'Why These Cards Found Each Other',summary})).catch(()=>null),
+  ]);
+  generated.filter(Boolean).forEach((item,index)=>{const value=item!;const id='gpt:'+round+':'+value.category;cards.push({id,category:value.category,entityId:id,displayOrder:base+50+index,notes:'Created by the connected Infinity GPT route from retrieved evidence',entityData:{id,title:value.title,summary:value.summary,round}})});
   return cards;
 }

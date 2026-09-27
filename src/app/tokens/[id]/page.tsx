@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import PrintButton from './PrintButton';
+import ExpandFeed from './ExpandFeed';
+import TrackedSource from './TrackedSource';
 
 const CATEGORY_LABELS: Record<string, string> = {
   song: '🎵 Song',
@@ -14,6 +16,8 @@ const CATEGORY_LABELS: Record<string, string> = {
   gemstone: '💎 Gemstone',
   meal: '🍽️ Meal',
   video: '▶ Video', poem: '✦ Poem', coupon: '% Coupon', story: '◉ Story', collectible: '◇ Collectible',
+  terraPreta: '🌱 Terra Preta / Burnt Soil', civilization: '🏛 Civilization', record: '★ Remarkable Fact',
+  book: '📚 Book', valuables: '💎 Jewels, Coins & Antiques', article: '📰 Civilization Article', comedy: '☺ Comedy Skit',
 };
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -227,8 +231,8 @@ export default async function TokenPage({ params }: { params: Promise<{ id: stri
                 {preview && (
                   <p className="text-sm text-[#8b949e] line-clamp-3 leading-relaxed">{preview}</p>
                 )}
-                {item.entityData?.sourceUrl && <a href={item.entityData.sourceUrl} target="_blank" rel="noopener noreferrer" className="inline-block mt-3 text-sm font-bold text-[#0a7759]">Open source →</a>}
-                {item.notes && (
+                {item.entityData?.sourceUrl && <TrackedSource href={item.entityData.sourceUrl} category={item.category} title={name} />}
+                {item.notes && !item.notes.startsWith('{') && (
                   <p className="mt-3 text-xs text-[#8b949e] italic border-t border-[#21262d] pt-2">
                     {item.notes}
                   </p>
@@ -237,6 +241,7 @@ export default async function TokenPage({ params }: { params: Promise<{ id: stri
             );
           })}
         </div>
+        <ExpandFeed tokenId={id} />
 
         {/* Actions */}
         <div className="mt-10 flex flex-wrap gap-4 justify-center">

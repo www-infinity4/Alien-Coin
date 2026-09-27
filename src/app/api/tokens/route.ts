@@ -9,7 +9,7 @@ import { buildLiveAssetCards } from '@/lib/liveBundle';
 
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => ({}));
-  const { userId, walletAddress, profile } = body as { userId?: string; walletAddress?: string; profile?: {zone?:string;ingredients?:string} };
+  const { userId, walletAddress, profile } = body as { userId?: string; walletAddress?: string; profile?: {zone?:string;ingredients?:string;signals?:string[]} };
   const preferenceSignal=[profile?.zone?.trim(),profile?.ingredients?.trim()].filter(Boolean).join('|');
   const seed = generateSeed([userId ?? walletAddress,preferenceSignal].filter(Boolean).join('|'));
   const liveCards=await buildLiveAssetCards(profile).catch(()=>[]);

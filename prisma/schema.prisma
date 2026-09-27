@@ -168,6 +168,8 @@ model User {
   tokensOwned   Token[]         @relation("TokenOwner")
   transfersSent TokenTransfer[] @relation("TransferSender")
   transfersRcvd TokenTransfer[] @relation("TransferRecipient")
+  signals       InterestSignal[]
+  interactions  FeedInteraction[]
 }
 
 model TokenTransfer {
@@ -180,4 +182,36 @@ model TokenTransfer {
   recipient     User     @relation("TransferRecipient", fields: [toAddress], references: [walletAddress])
   transferredAt DateTime @default(now())
   memo          String?
+}
+
+model InterestSignal {
+  id            String   @id @default(uuid())
+  walletAddress String
+  user          User     @relation(fields: [walletAddress], references: [walletAddress])
+  namespace     String
+  term          String
+  affinity      Float    @default(1)
+  sourceSystem  String
+  sourceEventId String
+  evidence      String?
+  firstSeenAt   DateTime @default(now())
+  lastSeenAt    DateTime @updatedAt
+
+  @@unique([walletAddress, sourceSystem, sourceEventId, term])
+  @@index([walletAddress, affinity])
+}
+
+model FeedInteraction {
+  id            String   @id @default(uuid())
+  walletAddress String
+  user          User     @relation(fields: [walletAddress], references: [walletAddress])
+  tokenId       String
+  category      String
+  entityId      String
+  action        String
+  weight        Float    @default(1)
+  createdAt     DateTime @default(now())
+
+  @@index([walletAddress, createdAt])
+  @@index([tokenId, createdAt])
 }

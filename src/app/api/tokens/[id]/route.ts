@@ -26,7 +26,11 @@ export async function GET(_request: NextRequest,{ params }: { params: Promise<{ 
   try {
     const token = await prisma.token.findUnique({where:{id},include:{items:{orderBy:{displayOrder:'asc'}},citations:true}});
     if (!token) return NextResponse.json({ error: 'Token not found' }, { status: 404 });
-    const itemsWithData = await Promise.all(token.items.map(async item=>({...item,entityData:await fetchEntityData(item.category,item.entityId)})));
+    const itemsWithData = await Promise.all(token.items.map(async item=>{
+      const stored=await fetchEntityData(item.category,item.entityId);
+      let attached=null; try{attached=item.notes?.startsWith('{')?JSON.parse(item.notes):null}catch{}
+      return {...item,entityData:stored||attached};
+    }));
     return NextResponse.json({ ...token, items: itemsWithData });
   } catch (error) {
     console.error('Error fetching token:', error);

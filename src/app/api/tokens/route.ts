@@ -15,7 +15,14 @@ export async function POST(request: NextRequest) {
   const seed = generateSeed([userId ?? walletAddress,preferenceSignal].filter(Boolean).join('|'));
   if(walletAddress&&profile?.signals?.length)await ingestSignals(walletAddress,profile.signals).catch(()=>[]);
   const storedSignals=await walletInterests(walletAddress).catch(()=>[]);
-  const liveCards=await buildLiveAssetCards({...profile,signals:[...storedSignals,...(profile?.signals||[])]}).catch(()=>[]);
+  // Alien Coin minting must never be held hostage by an AI/search quota or a slow
+  // enrichment provider. The shared Cloudflare GPT route enriches the token when
+  // available, but the database/fallback mint remains the source of truth.
+  const enrichment=buildLiveAssetCards({...profile,signals:[...storedSignals,...(profile?.signals||[])]}).catch(()=>[]);
+  const liveCards=await Promise.race([
+    enrichment,
+    new Promise<Awaited<ReturnType<typeof buildLiveAssetCards>>>(resolve=>setTimeout(()=>resolve([]),6500)),
+  ]);
 
   try {
     const [songs, movies, trees, plantingLocations, treatIdeas, greekGods, coins, quotes, gemstones, meals] = await Promise.all([

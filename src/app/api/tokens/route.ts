@@ -6,13 +6,16 @@ import { generateSeed, seededPick } from '@/lib/tokenGenerator';
 import { computeRarityTier, computeProofHash, buildTokenJSON } from '@/lib/rarityEngine';
 import { buildFallbackToken } from '@/lib/fallbackCorpus';
 import { buildLiveAssetCards } from '@/lib/liveBundle';
+import { ingestSignals, walletInterests } from '@/lib/interestDatabase';
 
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => ({}));
   const { userId, walletAddress, profile } = body as { userId?: string; walletAddress?: string; profile?: {zone?:string;ingredients?:string;signals?:string[]} };
   const preferenceSignal=[profile?.zone?.trim(),profile?.ingredients?.trim()].filter(Boolean).join('|');
   const seed = generateSeed([userId ?? walletAddress,preferenceSignal].filter(Boolean).join('|'));
-  const liveCards=await buildLiveAssetCards(profile).catch(()=>[]);
+  if(walletAddress&&profile?.signals?.length)await ingestSignals(walletAddress,profile.signals).catch(()=>[]);
+  const storedSignals=await walletInterests(walletAddress).catch(()=>[]);
+  const liveCards=await buildLiveAssetCards({...profile,signals:[...storedSignals,...(profile?.signals||[])]}).catch(()=>[]);
 
   try {
     const [songs, movies, trees, plantingLocations, treatIdeas, greekGods, coins, quotes, gemstones, meals] = await Promise.all([

@@ -2,7 +2,7 @@ type SearchResult={title?:string;url?:string;content?:string;description?:string
 export type BundleProfile={zone?:string;ingredients?:string;signals?:string[];round?:number};
 export type LiveCard={id:string;category:string;entityId:string;displayOrder:number;notes:string;entityData:Record<string,unknown>&{id:string}};
 const SEARCH='https://orange-brook-a2ac.marvaseater.workers.dev/search';
-const GPT='https://infinity-rogers.marvaseater.workers.dev/v1/chat';
+const GPT=(process.env.INFINITY_GPT_URL||'https://infinity-rogers.marvaseater.workers.dev/v1/chat').replace(/\/$/,'');
 async function search(query:string,category='general'){
   const url=new URL(SEARCH); url.search=new URLSearchParams({q:query,format:'json',categories:category,safesearch:'1'}).toString();
   const response=await fetch(url,{cache:'no-store',signal:AbortSignal.timeout(8000)});
@@ -17,9 +17,9 @@ function best(results:SearchResult[],round:number,prefer?:RegExp){
 }
 async function gpt(input:string,context:Record<string,unknown>){
   const response=await fetch(GPT,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({input,context:{application:'Alien Coin',...context}}),signal:AbortSignal.timeout(18000),cache:'no-store'});
-  if(!response.ok)throw new Error('GPT unavailable');
-  const body=await response.json() as {output_text?:string;output?:string};
-  return clean(body.output_text||body.output);
+  const body=await response.json().catch(()=>({})) as {output_text?:string;output?:string;answer?:string;response?:string;content?:string;message?:string;error?:string};
+  if(!response.ok)throw new Error(body.message||body.error||('Cloudflare GPT HTTP '+response.status));
+  return clean(body.output_text||body.output||body.answer||body.response||body.content||body.message);
 }
 function signalText(profile:BundleProfile){
   return (profile.signals||[]).map(clean).filter(Boolean).slice(0,24).join(' ');

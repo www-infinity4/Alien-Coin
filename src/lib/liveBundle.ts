@@ -30,11 +30,16 @@ export async function buildLiveAssetCards(profile:BundleProfile={}):Promise<Live
   const ingredients=clean(profile.ingredients)||'seasonal pantry ingredients';
   const interests=signalText(profile)||'music cinema history nature collecting practical knowledge';
   const focus=interests.split(' ').slice(round%8,round%8+8).join(' ')||interests;
+  const has=(pattern:RegExp)=>pattern.test(interests);
+  const movieQuery=has(/\b(saw|horror|scary)\b/)?'Saw horror movie official trailer scene site:youtube.com/watch':focus+' full movie documentary site:youtube.com/watch';
+  const musicQuery=has(/\bkorn\b/)?'Korn official music video song site:youtube.com/watch':focus+' famous song official audio site:youtube.com/watch';
+  const treeQuery=has(/\biowa\b/)?'cherry tree cultivars Iowa State University Extension hardiness':'native tree '+zone+' USDA extension';
+  const poemQuery=has(/\bnature\b/)?'nature poetry public domain Poetry Foundation poets.org':focus+' poem Poetry Foundation poets.org';
   const jobs=[
-    ['video',focus+' full movie documentary site:youtube.com/watch','videos',/youtube\.com|youtu\.be/i],
-    ['song',focus+' famous song official audio site:youtube.com/watch','videos',/youtube\.com|youtu\.be/i],
-    ['poem',focus+' poem Poetry Foundation poets.org','general'],
-    ['tree','native tree '+zone+' USDA extension','general'],
+    ['video',movieQuery,'videos',/youtube\.com|youtu\.be/i],
+    ['song',musicQuery,'videos',/youtube\.com|youtu\.be/i],
+    ['poem',poemQuery,'general'],
+    ['tree',treeQuery,'general'],
     ['meal','recipe '+ingredients+' '+focus,'general'],
     ['coupon','coupon useful offer '+zone+' '+focus,'general'],
     ['terraPreta','Terra Preta burnt soil biochar ancient civilization archaeology','general'],
@@ -56,6 +61,7 @@ export async function buildLiveAssetCards(profile:BundleProfile={}):Promise<Live
   const generated=await Promise.all([
     gpt('Write a compelling 350-word article about the most civilization-important subject in this evidence. Connect past, present and future. Do not invent facts; clearly distinguish inference.',{task:'civilization-article',verified_context:{focus,evidence}}).then(summary=>({category:'article',title:'Civilization File',summary})).catch(()=>null),
     gpt('Write a short original comedy skit inspired by these interests. Keep it friendly, specific and entertaining. Do not imitate a living comedian.',{task:'original-comedy-skit',verified_context:{focus,evidence}}).then(summary=>({category:'comedy',title:'The Alien Coin Comedy Break',summary})).catch(()=>null),
+    gpt('Write an original nature poem matched to this holder when nature is among the interests; otherwise write a poem about the strongest interest. Do not imitate or quote a living poet.',{task:'personalized-original-poem',verified_context:{focus,evidence}}).then(summary=>({category:'poemOriginal',title:has(/\bnature\b/)?'A Nature Poem for This Coin':'A Poem for This Coin',summary})).catch(()=>null),
     gpt('Write one concise storyline explaining why this edition’s entertainment, knowledge and practical cards belong together for this holder.',{task:'bundle-storyline',verified_context:{focus,evidence}}).then(summary=>({category:'story',title:'Why These Cards Found Each Other',summary})).catch(()=>null),
   ]);
   generated.filter(Boolean).forEach((item,index)=>{const value=item!;const id='gpt:'+round+':'+value.category;cards.push({id,category:value.category,entityId:id,displayOrder:base+50+index,notes:'Created by the connected Infinity GPT route from retrieved evidence',entityData:{id,title:value.title,summary:value.summary,round}})});

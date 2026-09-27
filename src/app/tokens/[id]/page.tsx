@@ -18,6 +18,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   video: '▶ Video', poem: '✦ Poem', coupon: '% Coupon', story: '◉ Story', collectible: '◇ Collectible',
   terraPreta: '🌱 Terra Preta / Burnt Soil', civilization: '🏛 Civilization', record: '★ Remarkable Fact',
   book: '📚 Book', valuables: '💎 Jewels, Coins & Antiques', article: '📰 Civilization Article', comedy: '☺ Comedy Skit',
+  poemOriginal: '✦ Original Poem',
 };
 
 const CATEGORY_COLORS: Record<string, string> = {

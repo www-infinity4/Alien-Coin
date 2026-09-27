@@ -13,6 +13,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   quote: '💬 Quote',
   gemstone: '💎 Gemstone',
   meal: '🍽️ Meal',
+  video: '▶ Video', poem: '✦ Poem', coupon: '% Coupon', story: '◉ Story', collectible: '◇ Collectible',
 };
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -55,7 +56,7 @@ function getEntityName(category: string, data: any): string {
     case 'quote': return data.speaker;
     case 'gemstone': return data.name;
     case 'meal': return data.mealName;
-    default: return data.name ?? data.title ?? 'Unknown';
+    default: return data.name ?? data.title ?? 'Attached asset';
   }
 }
 
@@ -91,9 +92,11 @@ function getEntityPreview(category: string, data: any): string {
     case 'quote': return `"${data.quote?.substring(0, 120) ?? ''}…"`;
     case 'gemstone': return (data.formation?.substring(0, 120) ?? '') + '…';
     case 'meal': return data.cuisineRegion ?? '';
-    default: return '';
+    default: return data.summary ?? data.description ?? '';
   }
 }
+
+function youtubeId(url?:string){if(!url)return null;try{const parsed=new URL(url);if(parsed.hostname==='youtu.be')return parsed.pathname.slice(1);if(parsed.hostname.includes('youtube.com'))return parsed.searchParams.get('v')||parsed.pathname.match(/\/embed\/([^/?]+)/)?.[1]||null}catch{}return null}
 
 interface TokenItem {
   id: string;
@@ -137,15 +140,14 @@ export default async function TokenPage({ params }: { params: Promise<{ id: stri
   const sortedItems = [...token.items].sort((a, b) => a.displayOrder - b.displayOrder);
 
   return (
-    <div className="min-h-screen bg-[#0d1117] text-[#c9d1d9]">
-      <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_20%_50%,_#0a1628_0%,_#0d1117_50%,_#0a0f1e_100%)] -z-10" />
+    <div className="min-h-screen bg-[#f7fbf8] text-[#15251f]">
 
-      <header className="border-b border-[#21262d] bg-[#0d1117]/80 backdrop-blur-sm sticky top-0 z-50">
+      <header className="border-b border-[#dfe9e2] bg-white/90 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
               <span className="text-2xl">👽</span>
-              <span className="text-xl font-bold bg-gradient-to-r from-cyan-400 via-yellow-300 to-purple-400 bg-clip-text text-transparent">
+              <span className="text-xl font-bold text-[#0a7759]">
                 Alien Coin
               </span>
             </Link>
@@ -166,11 +168,11 @@ export default async function TokenPage({ params }: { params: Promise<{ id: stri
 
       <main className="max-w-5xl mx-auto px-4 py-12">
         {/* Token Summary */}
-        <div className="bg-[#161b22] border border-[#21262d] rounded-2xl p-8 mb-10">
+        <div className="bg-white border border-[#dfe9e2] rounded-2xl p-8 mb-10 shadow-xl shadow-emerald-950/5">
           <div className="flex items-start gap-4">
             <div className="text-5xl">👽</div>
             <div className="flex-1 min-w-0">
-              <h1 className="text-2xl font-bold text-[#e6edf3] mb-2 leading-tight">{token.title}</h1>
+              <h1 className="text-2xl font-bold text-[#15251f] mb-2 leading-tight">{token.title}</h1>
               <p className="text-[#8b949e] mb-4">{token.summary}</p>
               <div className="flex flex-wrap gap-3 text-xs font-mono">
                 <span className="px-3 py-1 bg-[#0d1117] border border-[#21262d] rounded-full text-[#8b949e]">
@@ -220,9 +222,12 @@ export default async function TokenPage({ params }: { params: Promise<{ id: stri
                 </div>
                 <h3 className="font-semibold text-[#e6edf3] mb-1 leading-tight">{name}</h3>
                 {subtitle && <p className="text-xs text-[#8b949e] mb-2">{subtitle}</p>}
+                {youtubeId(item.entityData?.youtubeUrl) && <iframe className="w-full aspect-video rounded-xl my-3 border-0" src={`https://www.youtube.com/embed/${youtubeId(item.entityData?.youtubeUrl)}?playsinline=1&rel=0`} title={name} allow="accelerometer; autoplay; encrypted-media; picture-in-picture" allowFullScreen />}
+                {item.entityData?.imageUrl && <img className="w-full aspect-video object-cover rounded-xl my-3" src={item.entityData.imageUrl} alt="" />}
                 {preview && (
                   <p className="text-sm text-[#8b949e] line-clamp-3 leading-relaxed">{preview}</p>
                 )}
+                {item.entityData?.sourceUrl && <a href={item.entityData.sourceUrl} target="_blank" rel="noopener noreferrer" className="inline-block mt-3 text-sm font-bold text-[#0a7759]">Open source →</a>}
                 {item.notes && (
                   <p className="mt-3 text-xs text-[#8b949e] italic border-t border-[#21262d] pt-2">
                     {item.notes}

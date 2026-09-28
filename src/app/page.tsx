@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
-interface CoinItem { category:string; title?:string; summary?:string; sourceUrl?:string; youtubeUrl?:string; imageUrl?:string; focus?:string }
+interface CoinItem { category:string; title?:string; summary?:string; sourceUrl?:string; youtubeUrl?:string; imageUrl?:string; embedUrl?:string; focus?:string }
 interface TokenSummary { id:string; title:string; summary:string; createdAt:string; rarityTier?:string; items?:CoinItem[] }
 interface WalletIdentity { address:string; shortId:string; createdAt:number }
 const WALLET_KEY='infinity-unified-wallet-link-v1';
@@ -137,7 +137,7 @@ export default function HomePage(){
     </section>
     {tokens[0]?.items&&tokens[0].items.length>0&&<section className="oracle-width section-block">
       <div className="section-title"><span>◉</span><div><h2>{tokens[0].title}</h2><p>{tokens[0].summary}</p></div></div>
-      <div className="asset-grid">{tokens[0].items.map((item,index)=>{const yid=youtubeId(item.youtubeUrl||item.sourceUrl);return <article className="asset-card" key={item.category+'-'+index}><b>{LABELS[item.category]||item.category}</b><h3>{item.title||LABELS[item.category]||'Attached asset'}</h3>{yid&&<iframe src={'https://www.youtube.com/embed/'+yid+'?playsinline=1&rel=0'} title={item.title||item.category} allow="accelerometer; autoplay; encrypted-media; picture-in-picture" allowFullScreen style={{width:'100%',aspectRatio:'16/9',border:0,borderRadius:'16px'}}/>}{item.imageUrl&&<img src={item.imageUrl} alt="" style={{width:'100%',aspectRatio:'16/9',objectFit:'cover',borderRadius:'16px'}}/>}<p>{item.summary||item.focus||'Attached to this Alien Coin.'}</p>{item.sourceUrl&&<a href={item.sourceUrl} target="_blank" rel="noopener noreferrer">Open source →</a>}<small>ATTACHED ASSET • SAVED WITH COIN</small></article>})}</div>
+      <div className="asset-grid">{tokens[0].items.map((item,index)=>{const yid=youtubeId(item.youtubeUrl||item.sourceUrl);return <article className="asset-card" key={item.category+'-'+index}><b>{LABELS[item.category]||item.category}</b><h3>{item.title||LABELS[item.category]||'Attached asset'}</h3>{item.embedUrl&&<iframe src={item.embedUrl} title={item.title||item.category} allow="autoplay; fullscreen" allowFullScreen className="asset-player"/>}{!item.embedUrl&&yid&&<iframe src={'https://www.youtube.com/embed/'+yid+'?playsinline=1&rel=0'} title={item.title||item.category} allow="accelerometer; autoplay; encrypted-media; picture-in-picture" allowFullScreen style={{width:'100%',aspectRatio:'16/9',border:0,borderRadius:'16px'}}/>}{item.imageUrl&&!item.embedUrl&&<img src={item.imageUrl} alt="" style={{width:'100%',aspectRatio:'16/9',objectFit:'cover',borderRadius:'16px'}}/>}<p>{item.summary||item.focus||'Attached to this Alien Coin.'}</p>{item.sourceUrl&&<a href={item.sourceUrl} target="_blank" rel="noopener noreferrer">Open source →</a>}<small>ATTACHED ASSET • SAVED WITH COIN</small></article>})}</div>
     </section>}
     <section className="oracle-width section-block">
       <div className="section-title"><span>01</span><div><h2>The card system inside every coin</h2><p>Cards can grow over time without breaking the original token.</p></div></div>

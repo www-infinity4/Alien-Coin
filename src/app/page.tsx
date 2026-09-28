@@ -28,10 +28,21 @@ export default function HomePage(){
   const [wallet,setWallet]=useState<WalletIdentity|null>(null);
   const [zone,setZone]=useState('');
   const [ingredients,setIngredients]=useState('');
+  const [menuOpen,setMenuOpen]=useState(false);
+  const [historyLoading,setHistoryLoading]=useState(false);
 
   useEffect(()=>{try{
     const identity=localStorage.getItem(WALLET_KEY); if(identity)setWallet(JSON.parse(identity));
   }catch{}},[]);
+
+  useEffect(()=>{if(!wallet?.address)return;let cancelled=false;(async()=>{
+    setHistoryLoading(true);
+    try{
+      const response=await fetch(API+'/api/tokens?wallet='+encodeURIComponent(wallet.address),{cache:'no-store'});
+      const data=await response.json();
+      if(!cancelled&&response.ok&&Array.isArray(data.tokens))setTokens(data.tokens);
+    }catch{}finally{if(!cancelled)setHistoryLoading(false)}
+  })();return()=>{cancelled=true}},[wallet?.address]);
 
   async function ensureWallet(){
     if(wallet)return wallet;
@@ -58,8 +69,22 @@ export default function HomePage(){
   return <main className="oracle-shell">
     <header className="oracle-header">
       <div className="brand"><span className="brand-mark">A</span><span><b>Alien Coin</b><small>ORACLE • PHI</small></span></div>
-      <div className="wallet-pill"><i />{wallet?wallet.shortId:'Wallet ready on first mint'}</div>
+      <div className="header-actions">
+        <div className="wallet-pill"><i />{wallet?wallet.shortId:'Wallet ready on first mint'}</div>
+        <button className="hamburger" aria-label="Open wallet and history" onClick={()=>setMenuOpen(true)}><span/><span/><span/></button>
+      </div>
     </header>
+    {menuOpen&&<div className="drawer-scrim" onClick={()=>setMenuOpen(false)}>
+      <aside className="wallet-drawer" onClick={e=>e.stopPropagation()}>
+        <div className="drawer-head"><div><small>UNIFIED WALLET</small><h2>Alien Coin History</h2></div><button onClick={()=>setMenuOpen(false)} aria-label="Close">×</button></div>
+        <div className="drawer-wallet"><span className="mini-coin">A</span><div><b>{wallet?wallet.shortId:'Not signed in yet'}</b><small>{wallet?.address||'Mint or sign in to connect your unified wallet.'}</small></div></div>
+        <div className="drawer-section-title"><b>Past tokens</b><small>{historyLoading?'Loading from Cloudflare…':tokens.length+' saved'}</small></div>
+        <div className="drawer-history">{tokens.map(token=><button key={token.id} className="drawer-token" onClick={()=>{setTokens([token,...tokens.filter(x=>x.id!==token.id)]);setMenuOpen(false)}}>
+          <span className="mini-coin">A</span><span><b>{token.title}</b><small>{new Date(token.createdAt).toLocaleString()} • {token.rarityTier||'Living'} • {token.items?.length||0} cards</small></span><strong>View</strong>
+        </button>)}{!historyLoading&&tokens.length===0&&<p className="drawer-empty">No Alien Coins are attached to this wallet yet.</p>}</div>
+        <div className="drawer-next">Transfer controls will be added in the next step after unified-wallet sign-in is connected.</div>
+      </aside>
+    </div>}
     <section className="hero oracle-width">
       <div className="eyebrow">PERSONAL ENTERTAINMENT • KNOWLEDGE • VALUE</div>
       <div className="coin" aria-hidden="true"><span>ALIEN</span><b>◉</b><small>INFINITY 2026®</small></div>

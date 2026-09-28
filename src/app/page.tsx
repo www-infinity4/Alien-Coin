@@ -6,6 +6,7 @@ interface CoinItem { category:string; title?:string; summary?:string; sourceUrl?
 interface TokenSummary { id:string; title:string; summary:string; createdAt:string; rarityTier?:string; items?:CoinItem[] }
 interface WalletIdentity { address:string; shortId:string; createdAt:number }
 const WALLET_KEY='infinity-unified-wallet-link-v1';
+const SESSION_KEY='alien-coin-wallet-session-v1';
 const API='https://alien-coin.marvaseater.workers.dev';
 const LABELS:Record<string,string>={video:'▶ Video',song:'♫ Music',poem:'✦ Poem',poemOriginal:'✦ Original Poem',tree:'♧ Tree',meal:'⌂ Recipe',coupon:'% Coupon / Offer',story:'◉ Story',collectible:'◇ Collectible',terraPreta:'🌱 Terra Preta',civilization:'🏛 Civilization',article:'📰 Civilization Article',record:'★ Remarkable Fact',book:'📚 Book',valuables:'💎 Jewels, Coins & Antiques',comedy:'☺ Comedy Skit',movie:'🎬 Movie'};
 function youtubeId(url?:string){if(!url)return '';try{const u=new URL(url);if(u.hostname==='youtu.be')return u.pathname.slice(1);if(u.hostname.includes('youtube.com'))return u.searchParams.get('v')||''}catch{}return ''}
@@ -30,19 +31,47 @@ export default function HomePage(){
   const [ingredients,setIngredients]=useState('');
   const [menuOpen,setMenuOpen]=useState(false);
   const [historyLoading,setHistoryLoading]=useState(false);
+  const [sessionToken,setSessionToken]=useState('');
+  const [handle,setHandle]=useState('');
+  const [passphrase,setPassphrase]=useState('');
+  const [authMode,setAuthMode]=useState<'signin'|'create'>('signin');
+  const [authMessage,setAuthMessage]=useState('');
+  const [authLoading,setAuthLoading]=useState(false);
 
   useEffect(()=>{try{
     const identity=localStorage.getItem(WALLET_KEY); if(identity)setWallet(JSON.parse(identity));
+    const session=localStorage.getItem(SESSION_KEY); if(session)setSessionToken(session);
   }catch{}},[]);
 
-  useEffect(()=>{if(!wallet?.address)return;let cancelled=false;(async()=>{
+  useEffect(()=>{if(!wallet?.address&&!sessionToken)return;let cancelled=false;(async()=>{
     setHistoryLoading(true);
     try{
-      const response=await fetch(API+'/api/tokens?wallet='+encodeURIComponent(wallet.address),{cache:'no-store'});
+      const response=await fetch(sessionToken?API+'/api/tokens':API+'/api/tokens?wallet='+encodeURIComponent(wallet?.address||''),{cache:'no-store',headers:sessionToken?{Authorization:'Bearer '+sessionToken}:{}});
       const data=await response.json();
-      if(!cancelled&&response.ok&&Array.isArray(data.tokens))setTokens(data.tokens);
+      if(!cancelled&&response.ok&&Array.isArray(data.tokens)){setTokens(data.tokens);if(data.wallet)setWallet({address:data.wallet.address,shortId:'@'+data.wallet.handle,createdAt:Date.now()})}
     }catch{}finally{if(!cancelled)setHistoryLoading(false)}
-  })();return()=>{cancelled=true}},[wallet?.address]);
+  })();return()=>{cancelled=true}},[wallet?.address,sessionToken]);
+
+  async function authenticate(){
+    setAuthLoading(true);setAuthMessage('');
+    try{
+      const endpoint=authMode==='create'?'/api/wallet/register':'/api/wallet/login';
+      const payload:any={handle:handle.trim(),passphrase};
+      if(authMode==='create'&&wallet?.address)payload.walletAddress=wallet.address;
+      const response=await fetch(API+endpoint,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
+      const data=await response.json();
+      if(!response.ok)throw new Error(data.error||'Wallet sign-in failed.');
+      const identity={address:data.wallet.address,shortId:'@'+data.wallet.handle,createdAt:Date.now()};
+      setWallet(identity);setSessionToken(data.token);setPassphrase('');
+      try{localStorage.setItem(WALLET_KEY,JSON.stringify(identity));localStorage.setItem(SESSION_KEY,data.token)}catch{}
+      setAuthMessage(authMode==='create'?'Unified wallet created and signed in.':'Signed in to unified wallet.');
+    }catch(reason){setAuthMessage(reason instanceof Error?reason.message:'Wallet sign-in failed.')}finally{setAuthLoading(false)}
+  }
+
+  function signOut(){
+    setSessionToken('');setWallet(null);setTokens([]);setAuthMessage('Signed out on this device.');
+    try{localStorage.removeItem(SESSION_KEY);localStorage.removeItem(WALLET_KEY)}catch{}
+  }
 
   async function ensureWallet(){
     if(wallet)return wallet;
@@ -57,7 +86,7 @@ export default function HomePage(){
     try{
       const identity=await ensureWallet();
       const signals:string[]=[]; try{for(let index=0;index<localStorage.length;index++){const key=localStorage.key(index)||'';if(/quant|phi|collect|search|history|interest/i.test(key)){const value=localStorage.getItem(key)||'';if(value&&value.length<12000)signals.push(value.slice(0,800))}}}catch{}
-      const response=await fetch(API+'/api/tokens',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({walletAddress:identity.address,profile:{zone,ingredients,signals:signals.slice(0,24)}})});
+      const response=await fetch(API+'/api/tokens',{method:'POST',headers:{'Content-Type':'application/json',...(sessionToken?{Authorization:'Bearer '+sessionToken}:{})},body:JSON.stringify({walletAddress:identity.address,profile:{zone,ingredients,signals:signals.slice(0,24)}})});
       if(!response.ok)throw new Error('The mint did not complete. Please try again.');
       const data=await response.json(); const token=data.token as TokenSummary;
       const updated=[token,...tokens.filter(item=>item.id!==token.id)].slice(0,25);
@@ -77,12 +106,19 @@ export default function HomePage(){
     {menuOpen&&<div className="drawer-scrim" onClick={()=>setMenuOpen(false)}>
       <aside className="wallet-drawer" onClick={e=>e.stopPropagation()}>
         <div className="drawer-head"><div><small>UNIFIED WALLET</small><h2>Alien Coin History</h2></div><button onClick={()=>setMenuOpen(false)} aria-label="Close">×</button></div>
-        <div className="drawer-wallet"><span className="mini-coin">A</span><div><b>{wallet?wallet.shortId:'Not signed in yet'}</b><small>{wallet?.address||'Mint or sign in to connect your unified wallet.'}</small></div></div>
+        <div className="drawer-wallet"><span className="mini-coin">A</span><div><b>{wallet?wallet.shortId:'Not signed in yet'}</b><small>{wallet?.address||'Sign in or create a unified wallet.'}</small></div></div>
+        {!sessionToken?<div className="wallet-auth">
+          <div className="auth-tabs"><button className={authMode==='signin'?'active':''} onClick={()=>setAuthMode('signin')}>Sign in</button><button className={authMode==='create'?'active':''} onClick={()=>setAuthMode('create')}>Create wallet</button></div>
+          <label>Wallet handle<input value={handle} onChange={e=>setHandle(e.target.value)} placeholder="Example: kris"/></label>
+          <label>Passphrase<input type="password" value={passphrase} onChange={e=>setPassphrase(e.target.value)} placeholder="8+ characters"/></label>
+          <button className="auth-submit" disabled={authLoading||!handle||passphrase.length<8} onClick={authenticate}>{authLoading?'Connecting…':authMode==='create'?'Create & sign in':'Sign in'}</button>
+          {authMessage&&<p className="auth-message">{authMessage}</p>}
+        </div>:<div className="signed-in-row"><span>Cloudflare authenticated</span><button onClick={signOut}>Sign out</button></div>}
         <div className="drawer-section-title"><b>Past tokens</b><small>{historyLoading?'Loading from Cloudflare…':tokens.length+' saved'}</small></div>
         <div className="drawer-history">{tokens.map(token=><button key={token.id} className="drawer-token" onClick={()=>{setTokens([token,...tokens.filter(x=>x.id!==token.id)]);setMenuOpen(false)}}>
           <span className="mini-coin">A</span><span><b>{token.title}</b><small>{new Date(token.createdAt).toLocaleString()} • {token.rarityTier||'Living'} • {token.items?.length||0} cards</small></span><strong>View</strong>
         </button>)}{!historyLoading&&tokens.length===0&&<p className="drawer-empty">No Alien Coins are attached to this wallet yet.</p>}</div>
-        <div className="drawer-next">Transfer controls will be added in the next step after unified-wallet sign-in is connected.</div>
+        <div className="drawer-next">Signed-in wallet identity is now ready for token ownership and transfer. Transfer controls come in Step 3.</div>
       </aside>
     </div>}
     <section className="hero oracle-width">

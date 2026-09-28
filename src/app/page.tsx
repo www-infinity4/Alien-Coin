@@ -2,10 +2,13 @@
 
 import { useEffect, useState } from 'react';
 
-interface TokenSummary { id:string; title:string; summary:string; createdAt:string; rarityTier?:string }
+interface CoinItem { category:string; title?:string; summary?:string; sourceUrl?:string; youtubeUrl?:string; imageUrl?:string; focus?:string }
+interface TokenSummary { id:string; title:string; summary:string; createdAt:string; rarityTier?:string; items?:CoinItem[] }
 interface WalletIdentity { address:string; shortId:string; createdAt:number }
 const WALLET_KEY='infinity-unified-wallet-link-v1';
 const API='https://alien-coin.marvaseater.workers.dev';
+const LABELS:Record<string,string>={video:'▶ Video',song:'♫ Music',poem:'✦ Poem',poemOriginal:'✦ Original Poem',tree:'♧ Tree',meal:'⌂ Recipe',coupon:'% Coupon / Offer',story:'◉ Story',collectible:'◇ Collectible',terraPreta:'🌱 Terra Preta',civilization:'🏛 Civilization',article:'📰 Civilization Article',record:'★ Remarkable Fact',book:'📚 Book',valuables:'💎 Jewels, Coins & Antiques',comedy:'☺ Comedy Skit',movie:'🎬 Movie'};
+function youtubeId(url?:string){if(!url)return '';try{const u=new URL(url);if(u.hostname==='youtu.be')return u.pathname.slice(1);if(u.hostname.includes('youtube.com'))return u.searchParams.get('v')||''}catch{}return ''}
 const ASSETS=[
   ['▶','Video','YouTube and authorized movie links'],['♫','Music','Songs, albums and audio sources'],
   ['✦','Poem','Matched poetry and original writing'],['♧','Tree','A tree selected for the user’s zone'],
@@ -71,6 +74,10 @@ export default function HomePage(){
       {error&&<div className="error-card">{error}</div>}
       {!error&&tokens.length>0&&<div className="error-card">Latest Alien Coin minted and saved to Cloudflare: {tokens[0].title}</div>}
     </section>
+    {tokens[0]?.items&&tokens[0].items.length>0&&<section className="oracle-width section-block">
+      <div className="section-title"><span>◉</span><div><h2>{tokens[0].title}</h2><p>{tokens[0].summary}</p></div></div>
+      <div className="asset-grid">{tokens[0].items.map((item,index)=>{const yid=youtubeId(item.youtubeUrl||item.sourceUrl);return <article className="asset-card" key={item.category+'-'+index}><b>{LABELS[item.category]||item.category}</b><h3>{item.title||LABELS[item.category]||'Attached asset'}</h3>{yid&&<iframe src={'https://www.youtube.com/embed/'+yid+'?playsinline=1&rel=0'} title={item.title||item.category} allow="accelerometer; autoplay; encrypted-media; picture-in-picture" allowFullScreen style={{width:'100%',aspectRatio:'16/9',border:0,borderRadius:'16px'}}/>}{item.imageUrl&&<img src={item.imageUrl} alt="" style={{width:'100%',aspectRatio:'16/9',objectFit:'cover',borderRadius:'16px'}}/>}<p>{item.summary||item.focus||'Attached to this Alien Coin.'}</p>{item.sourceUrl&&<a href={item.sourceUrl} target="_blank" rel="noopener noreferrer">Open source →</a>}<small>ATTACHED ASSET • SAVED WITH COIN</small></article>})}</div>
+    </section>}
     <section className="oracle-width section-block">
       <div className="section-title"><span>01</span><div><h2>The card system inside every coin</h2><p>Cards can grow over time without breaking the original token.</p></div></div>
       <div className="asset-grid">{ASSETS.map(([icon,title,desc])=><article className="asset-card" key={title}><b>{icon}</b><h3>{title}</h3><p>{desc}</p><small>ATTACHED ASSET</small></article>)}</div>

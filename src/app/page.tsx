@@ -85,7 +85,7 @@ export default function HomePage(){
     setLoading(true); setError(null);
     try{
       const identity=await ensureWallet();
-      const signals:string[]=[]; try{for(let index=0;index<localStorage.length;index++){const key=localStorage.key(index)||'';if(/quant|phi|collect|search|history|interest/i.test(key)){const value=localStorage.getItem(key)||'';if(value&&value.length<12000)signals.push(value.slice(0,800))}}}catch{}
+      const signals:string[]=[]; try{for(let index=0;index<localStorage.length;index++){const key=localStorage.key(index)||'';if(/phi|collect|search|history|interest/i.test(key)){const value=localStorage.getItem(key)||'';if(value&&value.length<12000)signals.push(value.slice(0,800))}}}catch{}
       const response=await fetch(API+'/api/tokens',{method:'POST',headers:{'Content-Type':'application/json',...(sessionToken?{Authorization:'Bearer '+sessionToken}:{})},body:JSON.stringify({walletAddress:identity.address,profile:{zone,ingredients,signals:signals.slice(0,24)}})});
       if(!response.ok)throw new Error('The mint did not complete. Please try again.');
       const data=await response.json(); const token=data.token as TokenSummary;

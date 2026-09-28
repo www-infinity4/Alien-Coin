@@ -1,12 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 
 interface TokenSummary { id:string; title:string; summary:string; createdAt:string; rarityTier?:string }
 interface WalletIdentity { address:string; shortId:string; createdAt:number }
 const WALLET_KEY='infinity-unified-wallet-link-v1';
-const TOKENS_KEY='alien-coin-tokens';
 const API='https://alien-coin.marvaseater.workers.dev';
 const ASSETS=[
   ['▶','Video','YouTube and authorized movie links'],['♫','Music','Songs, albums and audio sources'],
@@ -29,14 +27,13 @@ export default function HomePage(){
   const [ingredients,setIngredients]=useState('');
 
   useEffect(()=>{try{
-    const saved=localStorage.getItem(TOKENS_KEY); if(saved)setTokens(JSON.parse(saved));
     const identity=localStorage.getItem(WALLET_KEY); if(identity)setWallet(JSON.parse(identity));
   }catch{}},[]);
 
   async function ensureWallet(){
     if(wallet)return wallet;
     const identity=makeWallet();
-    localStorage.setItem(WALLET_KEY,JSON.stringify(identity)); setWallet(identity);
+    try{localStorage.setItem(WALLET_KEY,JSON.stringify(identity))}catch{} setWallet(identity);
     await fetch(API+'/api/auth/wallet',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({walletAddress:identity.address})}).catch(()=>{});
     return identity;
   }
@@ -50,7 +47,7 @@ export default function HomePage(){
       if(!response.ok)throw new Error('The mint did not complete. Please try again.');
       const data=await response.json(); const token=data.token as TokenSummary;
       const updated=[token,...tokens.filter(item=>item.id!==token.id)].slice(0,25);
-      localStorage.setItem(TOKENS_KEY,JSON.stringify(updated)); setTokens(updated);
+      setTokens(updated);
       setLoading(false);
     }catch(reason){setError(reason instanceof Error?reason.message:'The mint did not complete.');setLoading(false)}
   }

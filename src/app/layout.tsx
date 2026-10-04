@@ -3,8 +3,23 @@ import Script from "next/script";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://quantaphi.org/alien-coin/"),
   title: "Alien Coin — Experience Bundles",
   description: "Curated research token bundles — music, cinema, nature, mythology, numismatics and more.",
+  alternates: { canonical: "https://quantaphi.org/alien-coin/" },
+  openGraph: {
+    type: "website",
+    url: "https://quantaphi.org/alien-coin/",
+    title: "Alien Coin | QuantaPhi",
+    description: "Mobile-first media tokens connecting movies, music, research, and Infinity wallet value.",
+    images: [{ url: "https://quantaphi.org/alien-coin/icon-512.png", width: 512, height: 512, alt: "Alien Coin" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Alien Coin | QuantaPhi",
+    description: "Mobile-first media tokens connecting movies, music, research, and Infinity wallet value.",
+    images: ["https://quantaphi.org/alien-coin/icon-512.png"],
+  },
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,

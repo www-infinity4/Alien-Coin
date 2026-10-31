@@ -3,11 +3,14 @@
 import { useEffect, useState } from 'react';
 
 interface CoinItem { category:string; title?:string; summary?:string; sourceUrl?:string; youtubeUrl?:string; imageUrl?:string; embedUrl?:string; focus?:string }
-interface TokenSummary { id:string; title:string; summary:string; createdAt:string; rarityTier?:string; items?:CoinItem[] }
+interface TokenSummary { id:string; title:string; summary:string; createdAt:string; rarityTier?:string; ownerWallet?:string|null; items?:CoinItem[] }
 interface WalletIdentity { address:string; shortId:string; createdAt:number }
 const WALLET_KEY='infinity-unified-wallet-link-v1';
 const SESSION_KEY='alien-coin-wallet-session-v1';
-const API='https://alien-coin.marvaseater.workers.dev';
+// QuantaPhi proxies authenticated token requests on its own origin to avoid
+// the legacy GitHub Pages-only backend CORS restriction.
+const API=typeof window!=='undefined'&&window.location.hostname==='quantaphi.org'
+  ?'/alien-coin':'https://alien-coin.marvaseater.workers.dev';
 const LABELS:Record<string,string>={video:'▶ Video',song:'♫ Music',poem:'✦ Poem',poemOriginal:'✦ Original Poem',tree:'♧ Tree',meal:'⌂ Recipe',coupon:'% Coupon / Offer',story:'◉ Story',collectible:'◇ Collectible',terraPreta:'🌱 Terra Preta',civilization:'🏛 Civilization',article:'📰 Civilization Article',record:'★ Remarkable Fact',book:'📚 Book',valuables:'💎 Jewels, Coins & Antiques',comedy:'☺ Comedy Skit',movie:'🎬 Movie'};
 function youtubeId(url?:string){if(!url)return '';try{const u=new URL(url);if(u.hostname==='youtu.be')return u.pathname.slice(1);if(u.hostname.includes('youtube.com'))return u.searchParams.get('v')||''}catch{}return ''}
 const ASSETS=[
@@ -29,6 +32,8 @@ export default function HomePage(){
   const [wallet,setWallet]=useState<WalletIdentity|null>(null);
   const [zone,setZone]=useState('');
   const [ingredients,setIngredients]=useState('');
+  const [useSignals,setUseSignals]=useState(false);
+  const [mintReceipt,setMintReceipt]=useState('');
   const [menuOpen,setMenuOpen]=useState(false);
   const [historyLoading,setHistoryLoading]=useState(false);
   const [sessionToken,setSessionToken]=useState('');
@@ -69,7 +74,7 @@ export default function HomePage(){
   }
 
   function signOut(){
-    setSessionToken('');setWallet(null);setTokens([]);setAuthMessage('Signed out on this device.');
+    setMintReceipt('');setSessionToken('');setWallet(null);setTokens([]);setAuthMessage('Signed out on this device.');
     try{localStorage.removeItem(SESSION_KEY);localStorage.removeItem(WALLET_KEY)}catch{}
   }
 
@@ -82,24 +87,51 @@ export default function HomePage(){
   }
 
   async function mint(){
-    setLoading(true); setError(null);
+    if(!sessionToken||!wallet?.address){
+      setMenuOpen(true);
+      setError('Sign in to your registered wallet before minting. Anonymous browser IDs do not establish ownership.');
+      return;
+    }
+    setLoading(true);setError(null);setMintReceipt('');
     try{
-      const identity=await ensureWallet();
-      const signals:string[]=[]; try{for(let index=0;index<localStorage.length;index++){const key=localStorage.key(index)||'';if(/phi|collect|search|history|interest/i.test(key)){const value=localStorage.getItem(key)||'';if(value&&value.length<12000)signals.push(value.slice(0,800))}}}catch{}
-      const response=await fetch(API+'/api/tokens',{method:'POST',headers:{'Content-Type':'application/json',...(sessionToken?{Authorization:'Bearer '+sessionToken}:{})},body:JSON.stringify({walletAddress:identity.address,profile:{zone,ingredients,signals:signals.slice(0,24)}})});
-      if(!response.ok)throw new Error('The mint did not complete. Please try again.');
-      const data=await response.json(); const token=data.token as TokenSummary;
-      const updated=[token,...tokens.filter(item=>item.id!==token.id)].slice(0,25);
-      setTokens(updated);
-      setLoading(false);
-    }catch(reason){setError(reason instanceof Error?reason.message:'The mint did not complete.');setLoading(false)}
+      const signals:string[]=[];
+      if(useSignals)try{
+        const activity=JSON.parse(localStorage.getItem('alien-coin-interactions-v1')||'[]');
+        if(Array.isArray(activity))for(const item of activity.slice(0,24)){
+          const phrase=[item?.category,item?.title].filter(value=>typeof value==='string').join(': ');
+          if(phrase)signals.push(phrase.slice(0,180));
+        }
+      }catch{}
+      // Server session authoritatively determines the owner. Never submit a browser-minted wallet address.
+      const response=await fetch(API+'/api/tokens',{
+        method:'POST',cache:'no-store',
+        headers:{'Content-Type':'application/json',Authorization:'Bearer '+sessionToken},
+        body:JSON.stringify({profile:{zone,ingredients,signals}})
+      });
+      const data=await response.json().catch(()=>({}));
+      if(!response.ok)throw new Error(data.error||'The mint did not complete. Please try again.');
+      const issued=data.token as TokenSummary|undefined;
+      if(!issued?.id||data.mode!=='CLOUDFLARE_D1_CARD_WORLD'||issued.ownerWallet!==wallet.address)
+        throw new Error('The server did not confirm a wallet-owned token. Check your wallet history before trying again.');
+      // Confirm actual persisted D1 token, not merely a successful submission.
+      const receiptResponse=await fetch(API+'/api/tokens/'+encodeURIComponent(issued.id),{
+        cache:'no-store',headers:{Authorization:'Bearer '+sessionToken}
+      });
+      const receipt=await receiptResponse.json().catch(()=>({}));
+      if(!receiptResponse.ok||receipt.token?.id!==issued.id||receipt.token?.ownerWallet!==wallet.address)
+        throw new Error('The token was submitted but its saved record could not be verified. Check history; do not mint again yet.');
+      const token=receipt.token as TokenSummary;
+      setTokens(current=>[token,...current.filter(item=>item.id!==token.id)].slice(0,100));
+      setMintReceipt('Cloudflare D1 confirmed token '+token.id+'.');
+    }catch(reason){setError(reason instanceof Error?reason.message:'The mint did not complete.');}
+    finally{setLoading(false)}
   }
 
   return <main className="oracle-shell">
     <header className="oracle-header">
       <div className="brand"><span className="brand-mark">A</span><span><b>Alien Coin</b><small>ORACLE • PHI</small></span></div>
       <div className="header-actions">
-        <div className="wallet-pill"><i />{wallet?wallet.shortId:'Wallet ready on first mint'}</div>
+        <div className="wallet-pill"><i />{wallet?wallet.shortId:'Sign in to mint'}</div>
         <button className="hamburger" aria-label="Open wallet and history" onClick={()=>setMenuOpen(true)}><span/><span/><span/></button>
       </div>
     </header>
@@ -130,10 +162,11 @@ export default function HomePage(){
         <label><span>Planting zone or location</span><input value={zone} onChange={e=>setZone(e.target.value)} placeholder="Example: Iowa • Zone 5b"/></label>
         <label><span>Ingredients on hand</span><input value={ingredients} onChange={e=>setIngredients(e.target.value)} placeholder="Example: potatoes, eggs, onions"/></label>
       </div>
-      <button className="mint-button" onClick={mint} disabled={loading}>{loading?'Minting your card world…':'Mint Alien Coin'}</button>
-      <p className="mint-note">The coin is placed in your wallet automatically. These optional details improve its tree and recipe cards.</p>
+      <label className="mint-note" style={{display:'flex',gap:8,alignItems:'center'}}><input type="checkbox" style={{flex:'none',width:20,height:20}} checked={useSignals} onChange={event=>setUseSignals(event.target.checked)}/>Use my saved Alien Coin activity interests for this mint (optional).</label>
+      <button className="mint-button" onClick={mint} disabled={loading}>{loading?'Verifying wallet mint…':sessionToken?'Mint Alien Coin':'Sign in to mint Alien Coin'}</button>
+      <p className="mint-note">Every new coin must be linked to a signed-in wallet and read back from Cloudflare D1. Optional details guide source discovery; no cash exchange value is promised.</p>
       {error&&<div className="error-card">{error}</div>}
-      {!error&&tokens.length>0&&<div className="error-card">Latest Alien Coin minted and saved to Cloudflare: {tokens[0].title}</div>}
+      {mintReceipt&&<div className="error-card" role="status">{mintReceipt}</div>}
     </section>
     {tokens[0]?.items&&tokens[0].items.length>0&&<section className="oracle-width section-block">
       <div className="section-title"><span>◉</span><div><h2>{tokens[0].title}</h2><p>{tokens[0].summary}</p></div></div>
